@@ -1,1 +1,135 @@
+DROP DATABASE IF EXISTS jardin_proyecto;
+CREATE DATABASE jardin_proyecto;
+USE jardin_proyecto;
 
+CREATE TABLE TIPO_DOCUMENTO (
+    ID_Tipo_Documento INT AUTO_INCREMENT PRIMARY KEY,
+    Nombre_Tipo VARCHAR(50) NOT NULL -- Ej: 'DNI', 'Pasaporte', 'Cédula de Identidad'
+);
+
+CREATE TABLE GRUPO_SANGUINEO (
+    ID_Grupo_Sanguineo INT AUTO_INCREMENT PRIMARY KEY,
+    Nombre_Grupo VARCHAR(10) NOT NULL -- Ej: 'A+', 'O-', 'AB+'
+);
+
+CREATE TABLE TUTOR (
+    ID_Tutor INT AUTO_INCREMENT PRIMARY KEY,
+    Numero_Documento VARCHAR(30) NOT NULL,
+    ID_Tipo_Documento INT NOT NULL,
+    Nombre VARCHAR(50) NOT NULL,
+    Apellido VARCHAR(50) NOT NULL,
+    FOREIGN KEY (ID_Tipo_Documento) REFERENCES TIPO_DOCUMENTO(ID_Tipo_Documento)
+);
+
+CREATE TABLE PERSONA_AUTORIZADA (
+    ID_Persona_Autorizada INT AUTO_INCREMENT PRIMARY KEY,
+    Numero_Documento VARCHAR(30) NOT NULL,
+    ID_Tipo_Documento INT NOT NULL,
+    Nombre VARCHAR(50) NOT NULL,
+    Apellido VARCHAR(50) NOT NULL,
+    Relación VARCHAR(50),
+    FOREIGN KEY (ID_Tipo_Documento) REFERENCES TIPO_DOCUMENTO(ID_Tipo_Documento)
+);
+
+CREATE TABLE DOCENTE (
+    ID_Docente INT AUTO_INCREMENT PRIMARY KEY,
+    Numero_Documento VARCHAR(30) NOT NULL,
+    ID_Tipo_Documento INT NOT NULL,
+    Nombre VARCHAR(50) NOT NULL,
+    Apellido VARCHAR(50) NOT NULL,
+    FOREIGN KEY (ID_Tipo_Documento) REFERENCES TIPO_DOCUMENTO(ID_Tipo_Documento)
+);
+
+CREATE TABLE CORREO_ELECTRONICO (
+    ID_Correo INT AUTO_INCREMENT PRIMARY KEY,
+    Email VARCHAR(100) NOT NULL,
+    Tipo_Correo VARCHAR(50) DEFAULT 'Personal', -- Ej: 'Gmail', 'Yahoo', 'Trabajo', 'Hotmail'
+    ID_Tutor INT NULL,
+    ID_Docente INT NULL,
+    FOREIGN KEY (ID_Tutor) REFERENCES TUTOR(ID_Tutor) ON DELETE CASCADE,
+    FOREIGN KEY (ID_Docente) REFERENCES DOCENTE(ID_Docente) ON DELETE CASCADE
+);
+
+CREATE TABLE SALA (
+    ID_Sala INT AUTO_INCREMENT PRIMARY KEY,
+    Nombre_Sala VARCHAR(50) NOT NULL,
+    Edad_Correspondiente INT,
+    Cant_Max INT,
+    ID_Docente INT,
+    FOREIGN KEY (ID_Docente) REFERENCES DOCENTE(ID_Docente)
+);
+
+CREATE TABLE ALUMNO (
+    ID_Alumno INT AUTO_INCREMENT PRIMARY KEY,
+    Numero_Documento VARCHAR(30) NOT NULL,
+    ID_Tipo_Documento INT NOT NULL,
+    Nombre VARCHAR(50) NOT NULL,
+    Apellido VARCHAR(50) NOT NULL,
+    Fecha_Nacimiento DATE,
+    Fecha_Ingreso DATE,
+    ID_Sala INT,
+    FOREIGN KEY (ID_Tipo_Documento) REFERENCES TIPO_DOCUMENTO(ID_Tipo_Documento),
+    FOREIGN KEY (ID_Sala) REFERENCES SALA(ID_Sala)
+);
+
+CREATE TABLE ALUMNO_TUTOR (
+    ID_Alumno_Tutor INT AUTO_INCREMENT PRIMARY KEY,
+    ID_Alumno INT NOT NULL,
+    ID_Tutor INT NOT NULL,
+    Relacion_alumno VARCHAR(50),
+    FOREIGN KEY (ID_Alumno) REFERENCES ALUMNO(ID_Alumno),
+    FOREIGN KEY (ID_Tutor) REFERENCES TUTOR(ID_Tutor)
+);
+
+CREATE TABLE FICHA_MÉDICA (
+    ID_Ficha INT AUTO_INCREMENT PRIMARY KEY,
+    ID_Alumno INT NOT NULL,
+    ID_Grupo_Sanguineo INT NOT NULL,
+    Alergias TEXT,
+    Observaciones TEXT,
+    FOREIGN KEY (ID_Alumno) REFERENCES ALUMNO(ID_Alumno),
+    FOREIGN KEY (ID_Grupo_Sanguineo) REFERENCES GRUPO_SANGUINEO(ID_Grupo_Sanguineo)
+);
+
+CREATE TABLE AUTORIZACIÓN (
+    ID_Autorizacion INT AUTO_INCREMENT PRIMARY KEY,
+    ID_Alumno INT NOT NULL,
+    ID_Persona_Autorizada INT NOT NULL,
+    FOREIGN KEY (ID_Alumno) REFERENCES ALUMNO(ID_Alumno),
+    FOREIGN KEY (ID_Persona_Autorizada) REFERENCES PERSONA_AUTORIZADA(ID_Persona_Autorizada)
+);
+
+CREATE TABLE ASISTENCIA (
+    ID_Asistencia INT AUTO_INCREMENT PRIMARY KEY,
+    ID_Alumno INT NOT NULL,
+    Fecha DATE NOT NULL,
+    FOREIGN KEY (ID_Alumno) REFERENCES ALUMNO(ID_Alumno)
+);
+
+CREATE TABLE CUADERNO_DIARIO (
+    ID_Cuaderno INT AUTO_INCREMENT PRIMARY KEY,
+    Fecha DATE NOT NULL,
+    Actividades TEXT,
+    Observaciones TEXT,
+    ID_Sala INT NOT NULL,
+    ID_Docente INT NOT NULL,
+    FOREIGN KEY (ID_Sala) REFERENCES SALA(ID_Sala),
+    FOREIGN KEY (ID_Docente) REFERENCES DOCENTE(ID_Docente)
+);
+
+
+INSERT INTO TIPO_DOCUMENTO (Nombre_Tipo) VALUES ('DNI'), ('Pasaporte'), ('Cédula de Identidad');
+INSERT INTO GRUPO_SANGUINEO (Nombre_Grupo) VALUES ('A+'), ('A-'), ('B+'), ('B-'), ('AB+'), ('AB-'), ('O+'), ('O-');
+
+CREATE VIEW vista_informe_alumno_tutor AS
+SELECT 
+    a.ID_Alumno,
+    CONCAT(a.Nombre, ' ', a.Apellido) AS Alumno,
+    CONCAT(t.Nombre, ' ', t.Apellido) AS Tutor,
+    at.Relacion_alumno AS Parentesco,
+    ce.Email,
+    ce.Tipo_Correo
+FROM ALUMNO a
+JOIN ALUMNO_TUTOR at ON a.ID_Alumno = at.ID_Alumno
+JOIN TUTOR t ON at.ID_Tutor = t.ID_Tutor
+LEFT JOIN CORREO_ELECTRONICO ce ON t.ID_Tutor = ce.ID_Tutor;
